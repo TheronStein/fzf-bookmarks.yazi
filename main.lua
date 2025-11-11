@@ -17,7 +17,7 @@ local function get_fzf_delimiter()
 end
 
 local get_hovered_path = ya.sync(function(state)
-  local h = rt.active.current.hovered
+  local h = cx.active.current.hovered
   if h then
     local path = tostring(h.url)
     if h.cha.is_dir then
@@ -33,7 +33,7 @@ local get_hovered_path = ya.sync(function(state)
 end)
 
 local is_hovered_directory = ya.sync(function(state)
-  local h = rt.active.current.hovered
+  local h = cx.active.current.hovered
   if h then
     return h.cha.is_dir
   end
@@ -41,7 +41,7 @@ local is_hovered_directory = ya.sync(function(state)
 end)
 
 local get_current_dir_path = ya.sync(function()
-  local path = tostring(rt.active.current.cwd)
+  local path = tostring(cx.active.current.cwd)
   if ya.target_family() == "windows" and path:match("^[A-Za-z]:$") then
     return path .. "\\"
   end
@@ -1309,7 +1309,7 @@ action_save = function(path, is_temp)
 
   while true do
     local title = is_temp and "Tag ⟨alias name⟩ [TEMPORARY]" or "Tag ⟨alias name⟩"
-    local value, event = ya.input({ title = title, value = tag, position = { "top-center", y = 3, w = 40 } })
+    local value, event = ya.input({ title = title, value = tag, pos = { "top-center", y = 3, w = 40 } })
     if event ~= 1 then return end
     tag = value or ''
     if #tag == 0 then
@@ -1340,7 +1340,7 @@ action_save = function(path, is_temp)
     local value, event = ya.input({
       title = "Keys ⟨space, comma or empty separator⟩",
       value = key_display,
-      position = { "top-center", y = 3, w = 50 }
+      pos = { "top-center", y = 3, w = 50 }
     })
     if event ~= 1 then return end
 
@@ -1492,7 +1492,7 @@ end
 local action_delete_all = function(temp_only)
   local mb_path = get_state_attr("path")
   local title = temp_only and "Delete all temporary bookmarks? ⟨y/n⟩" or "Delete all user bookmarks? ⟨y/n⟩"
-  local value, event = ya.input({ title = title, position = { "top-center", y = 3, w = 45 } })
+  local value, event = ya.input({ title = title, pos = { "top-center", y = 3, w = 45 } })
   if event ~= 1 or string.lower(value or "") ~= "y" then
     ya.notify { title = "Bookmarks", content = "Cancel delete", timeout = 1, level = "info" }
     return
