@@ -69,7 +69,7 @@ local get_temp_bookmarks = ya.sync(function(state)
 end)
 
 local get_current_tab_idx = ya.sync(function(state)
-  return rt.tabs.idx
+  return cx.tabs.idx
 end)
 
 local get_directory_history = ya.sync(function(state)
@@ -1623,8 +1623,8 @@ return {
     state.initialized_tabs = {}
 
     ps.sub("cd", function(body)
-      local tab = body.tab or rt.tabs.idx
-      local new_path = normalize_path(tostring(rt.active.current.cwd))
+      local tab = body.tab or cx.tabs.idx
+      local new_path = normalize_path(tostring(cx.active.current.cwd))
 
       if not state.initialized_tabs[tab] then
         state.last_paths[tab] = new_path
