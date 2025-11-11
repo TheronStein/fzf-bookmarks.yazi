@@ -66,6 +66,18 @@ require("fzf-bookmarks"):setup({
 
 For detailed configuration and keymap setup, see the [original whoosh.yazi documentation](https://github.com/WhoSowSee/whoosh.yazi).
 
+### New Keymap Actions
+
+Add these to your `keymap.toml`:
+
+```toml
+# Add bookmark from fzf directory search
+{ on = ["b", "F"], run = "plugin fzf-bookmarks add_by_search", desc = "Add Bookmark from Search (fzf)" }
+
+# Add temporary bookmark from fzf directory search
+{ on = ["b", "C"], run = "plugin fzf-bookmarks add_temp_by_search", desc = "Add Temp Bookmark from Search (fzf)" }
+```
+
 ## API Changes (v25+)
 
 This fork replaces deprecated APIs:
@@ -74,11 +86,18 @@ This fork replaces deprecated APIs:
 
 These changes ensure compatibility with Yazi nightly builds and eliminate deprecation warnings.
 
+## New Features
+
+- ✅ **Add bookmark from fzf directory search** - Search and bookmark any directory under $HOME using fzf
+  - Uses `fd` for fast directory traversal
+  - Excludes common patterns (.git, node_modules, .cache)
+  - Integrates with existing tag/key bookmark creation flow
+  - Supports both permanent and temporary bookmarks
+
 ## Planned Features
 
 - [ ] Edit bookmark by key
 - [ ] Edit bookmark by fzf
-- [ ] Add bookmark from fzf directory search
 
 ## Credits
 
