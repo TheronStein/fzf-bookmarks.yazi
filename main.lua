@@ -17,7 +17,7 @@ local function get_fzf_delimiter()
 end
 
 local get_hovered_path = ya.sync(function(state)
-  local h = cx.active.current.hovered
+  local h = rt.active.current.hovered
   if h then
     local path = tostring(h.url)
     if h.cha.is_dir then
@@ -33,7 +33,7 @@ local get_hovered_path = ya.sync(function(state)
 end)
 
 local is_hovered_directory = ya.sync(function(state)
-  local h = cx.active.current.hovered
+  local h = rt.active.current.hovered
   if h then
     return h.cha.is_dir
   end
@@ -41,7 +41,7 @@ local is_hovered_directory = ya.sync(function(state)
 end)
 
 local get_current_dir_path = ya.sync(function()
-  local path = tostring(cx.active.current.cwd)
+  local path = tostring(rt.active.current.cwd)
   if ya.target_family() == "windows" and path:match("^[A-Za-z]:$") then
     return path .. "\\"
   end
@@ -69,7 +69,7 @@ local get_temp_bookmarks = ya.sync(function(state)
 end)
 
 local get_current_tab_idx = ya.sync(function(state)
-  return cx.tabs.idx
+  return rt.tabs.idx
 end)
 
 local get_directory_history = ya.sync(function(state)
@@ -1586,8 +1586,8 @@ return {
     state.initialized_tabs = {}
 
     ps.sub("cd", function(body)
-      local tab = body.tab or cx.tabs.idx
-      local new_path = normalize_path(tostring(cx.active.current.cwd))
+      local tab = body.tab or rt.tabs.idx
+      local new_path = normalize_path(tostring(rt.active.current.cwd))
 
       if not state.initialized_tabs[tab] then
         state.last_paths[tab] = new_path
