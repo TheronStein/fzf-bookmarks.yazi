@@ -610,7 +610,7 @@ fzf_find = function()
   local mb_path = get_state_attr("path")
   local temp_bookmarks = get_temp_bookmarks()
 
-  local permit = ya.hide()
+  local permit = ui.hide()
   local temp_file_path = nil
   local cmd
 
@@ -691,7 +691,7 @@ fzf_find_for_rename = function()
   local mb_path = get_state_attr("path")
   local temp_bookmarks = get_temp_bookmarks()
 
-  local permit = ya.hide()
+  local permit = ui.hide()
   local temp_file_path = nil
   local cmd
 
@@ -771,7 +771,7 @@ fzf_find_multi = function()
   local temp_bookmarks = get_temp_bookmarks()
   local user_bookmarks = get_state_attr("bookmarks")
 
-  local permit = ya.hide()
+  local permit = ui.hide()
   local temp_file_path = nil
   local cmd
 
@@ -871,7 +871,7 @@ fzf_history = function()
     return nil
   end
 
-  local permit = ya.hide()
+  local permit = ui.hide()
   local temp_file_path = os.tmpname()
   local temp_file = io.open(temp_file_path, "w")
 
@@ -911,7 +911,7 @@ end
 fzf_directory_search = function()
   local home_dir = os.getenv("HOME") or "~"
 
-  local permit = ya.hide()
+  local permit = ui.hide()
 
   -- Use fd to find all directories under $HOME, excluding common ignore patterns
   local cmd = string.format(
