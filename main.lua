@@ -908,6 +908,43 @@ fzf_history = function()
   return nil
 end
 
+fzf_directory_search = function()
+  local home_dir = os.getenv("HOME") or "~"
+
+  local permit = ya.hide()
+
+  -- Use fd to find all directories under $HOME, excluding common ignore patterns
+  local cmd = string.format(
+    "fd --type d --hidden --exclude .git --exclude node_modules --exclude .cache --base-directory '%s' . '%s' 2>/dev/null | fzf --prompt=\"Add Bookmark > \" --preview 'ls -la %s/{}'",
+    home_dir, home_dir, home_dir
+  )
+
+  local handle = io.popen(cmd, "r")
+  local result = ""
+  if handle then
+    result = string.gsub(handle:read("*all") or "", "^%s*(.-)%s*$", "%1")
+    handle:close()
+  end
+
+  permit:drop()
+
+  if result and result ~= "" then
+    -- Convert relative path to absolute
+    local selected_path = home_dir .. path_sep .. result
+    return normalize_path(selected_path)
+  end
+
+  return nil
+end
+
+add_bookmark_by_search = function(is_temp)
+  local selected_path = fzf_directory_search()
+
+  if selected_path then
+    action_save(selected_path, is_temp)
+  end
+end
+
 local create_special_menu_items = function()
   local special_items = {}
   local special_keys = get_state_attr("special_keys") or DEFAULT_SPECIAL_KEYS
@@ -1658,6 +1695,10 @@ return {
         local temp_b = get_temp_bookmarks()
         action_save(path, temp_b[path] ~= nil)
       end
+    elseif action == "add_by_search" then
+      add_bookmark_by_search(false)
+    elseif action == "add_temp_by_search" then
+      add_bookmark_by_search(true)
     end
   end,
 }
