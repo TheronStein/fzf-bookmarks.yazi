@@ -2014,7 +2014,12 @@ return {
 
     local bookmarks_dir = options.bookmarks_dir or default_dir
     state.bookmarks_dir = bookmarks_dir
-    ensure_directory(bookmarks_dir)
+    -- Create bookmarks directory if it doesn't exist
+    if ya.target_family() == "windows" then
+      os.execute('mkdir "' .. bookmarks_dir:gsub("/", "\\") .. '" 2>nul')
+    else
+      os.execute('mkdir -p "' .. bookmarks_dir .. '"')
+    end
 
     -- Set default group
     state.active_group = options.default_group or "default"
