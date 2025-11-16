@@ -2056,6 +2056,9 @@ return {
     local saved_group = load_active_group()
     state.active_group = saved_group or options.default_group or "default"
 
+    -- Save the active group so it persists (in case this is first run)
+    save_active_group(state.active_group)
+
     -- Legacy path support (for backward compatibility)
     local legacy_path = options.bookmarks_path or options.path
     if type(legacy_path) == "string" and legacy_path ~= '' then
