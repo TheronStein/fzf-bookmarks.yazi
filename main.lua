@@ -1767,6 +1767,31 @@ local get_group_path = function(group_name)
   return bookmarks_dir .. path_sep .. group_name
 end
 
+local get_active_group_file = function()
+  local bookmarks_dir = get_state_attr("bookmarks_dir")
+  return bookmarks_dir .. path_sep .. ".active_group"
+end
+
+local save_active_group = function(group_name)
+  local active_file = get_active_group_file()
+  local file = io.open(active_file, "w")
+  if file then
+    file:write(group_name)
+    file:close()
+  end
+end
+
+local load_active_group = function()
+  local active_file = get_active_group_file()
+  local file = io.open(active_file, "r")
+  if file then
+    local group_name = file:read("*line")
+    file:close()
+    return group_name
+  end
+  return nil
+end
+
 local list_groups = function()
   local bookmarks_dir = get_state_attr("bookmarks_dir")
   local groups = {}
@@ -1774,7 +1799,10 @@ local list_groups = function()
   local handle = io.popen('ls -1 "' .. bookmarks_dir .. '" 2>/dev/null')
   if handle then
     for file in handle:lines() do
-      table.insert(groups, file)
+      -- Exclude hidden files like .active_group
+      if not file:match("^%.") then
+        table.insert(groups, file)
+      end
     end
     handle:close()
   end
@@ -1809,6 +1837,9 @@ local switch_group = function(group_name)
   set_state_attr("active_group", group_name)
   set_state_attr("path", group_path)
   set_state_attr("bookmarks", user_bookmarks)
+
+  -- Save active group for next session
+  save_active_group(group_name)
 
   ya.notify {
     title = "Bookmarks",
@@ -1921,7 +1952,7 @@ local action_switch_group = function()
   local result = handle:read("*a")
   handle:close()
   os.remove(temp_file_path)
-  ui.show(permit)
+  permit:drop()
 
   if result and result ~= "" then
     local selected_group = result:gsub("^%s*%*?%s*", ""):gsub("%s+$", "")
@@ -1989,7 +2020,7 @@ local action_delete_group = function()
   local result = handle:read("*a")
   handle:close()
   os.remove(temp_file_path)
-  ui.show(permit)
+  permit:drop()
 
   if result and result ~= "" then
     local selected_group = result:gsub("^%s+", ""):gsub("%s+$", "")
@@ -2021,8 +2052,9 @@ return {
       os.execute('mkdir -p "' .. bookmarks_dir .. '"')
     end
 
-    -- Set default group
-    state.active_group = options.default_group or "default"
+    -- Load saved active group or use default
+    local saved_group = load_active_group()
+    state.active_group = saved_group or options.default_group or "default"
 
     -- Legacy path support (for backward compatibility)
     local legacy_path = options.bookmarks_path or options.path
