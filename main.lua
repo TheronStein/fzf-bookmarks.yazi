@@ -1932,7 +1932,7 @@ end
 local action_create_group = function()
   local value, event = ya.input({
     title = "Create new bookmark group:",
-    position = { "top-center", y = 3, w = 50 },
+    pos = { "top-center", y = 3, w = 50 },
   })
 
   if event == 1 and value and value ~= "" then
@@ -1940,7 +1940,7 @@ local action_create_group = function()
       -- Optionally switch to the new group
       local switch = ya.input({
         title = "Switch to new group? (y/n):",
-        position = { "top-center", y = 3, w = 50 },
+        pos = { "top-center", y = 3, w = 50 },
       })
       if switch and switch:lower() == "y" then
         switch_group(value)
@@ -1997,7 +1997,7 @@ local action_delete_group = function()
     -- Confirm deletion
     local confirm, event = ya.input({
       title = "Delete group '" .. selected_group .. "'? (yes/no):",
-      position = { "top-center", y = 3, w = 50 },
+      pos = { "top-center", y = 3, w = 50 },
     })
 
     if event == 1 and confirm and confirm:lower() == "yes" then
