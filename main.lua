@@ -1917,11 +1917,17 @@ end
 
 local get_group_path = function(group_name)
   local bookmarks_dir = get_state_attr("bookmarks_dir")
+  if not bookmarks_dir then
+    return nil
+  end
   return bookmarks_dir .. path_sep .. group_name
 end
 
 local get_active_group_file = function(bookmarks_dir)
   bookmarks_dir = bookmarks_dir or get_state_attr("bookmarks_dir")
+  if not bookmarks_dir then
+    return nil
+  end
   return bookmarks_dir .. path_sep .. ".active_group"
 end
 
@@ -1947,6 +1953,9 @@ end
 
 local list_groups = function()
   local bookmarks_dir = get_state_attr("bookmarks_dir")
+  if not bookmarks_dir then
+    return {}
+  end
   local groups = {}
 
   local handle = io.popen('ls -1 "' .. bookmarks_dir .. '" 2>/dev/null')
@@ -1970,6 +1979,10 @@ local switch_group = function(group_name)
   end
 
   local group_path = get_group_path(group_name)
+  if not group_path then
+    ya.notify { title = "Bookmarks", content = "Bookmarks directory not initialized", timeout = 2, level = "error" }
+    return false
+  end
   local bookmarks_dir = get_state_attr("bookmarks_dir")
 
   -- Load bookmarks from new group
@@ -2175,6 +2188,15 @@ end
 local generate_global_keymap = function()
   local all_bookmarks = get_all_bookmarks()
   local bookmarks_dir = get_state_attr("bookmarks_dir")
+  if not bookmarks_dir then
+    ya.notify {
+      title = "Bookmarks",
+      content = "Bookmarks directory not initialized",
+      timeout = 2,
+      level = "error"
+    }
+    return false
+  end
   local global_keymap_path = bookmarks_dir .. path_sep .. ".." .. path_sep .. "bookmarks-global.toml"
 
   -- Ensure parent directory exists
