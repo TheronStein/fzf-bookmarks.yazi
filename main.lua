@@ -523,8 +523,8 @@ local action_save, action_save_global_key, action_jump, action_delete, which_fin
 
 local function get_all_bookmarks()
   local all_b = {}
-  local config_b = get_state_attr("config_bookmarks")
-  local user_b = get_state_attr("bookmarks")
+  local config_b = get_state_attr("config_bookmarks") or {}
+  local user_b = get_state_attr("bookmarks") or {}
 
   for path, item in pairs(config_b) do
     all_b[path] = item
