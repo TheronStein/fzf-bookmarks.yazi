@@ -73,10 +73,13 @@ local get_current_tab_idx = ya.sync(function(state)
 end)
 
 local get_directory_history = ya.sync(function(state)
-  return state.directory_history
+  return state.directory_history or {}
 end)
 
 local add_to_history = ya.sync(function(state, tab_idx, path)
+  if not state.directory_history then
+    state.directory_history = {}
+  end
   if not state.directory_history[tab_idx] then
     state.directory_history[tab_idx] = {}
   end
@@ -98,6 +101,9 @@ local add_to_history = ya.sync(function(state, tab_idx, path)
 end)
 
 local get_tab_history = ya.sync(function(state, tab_idx)
+  if not state.directory_history then
+    return {}
+  end
   return state.directory_history[tab_idx] or {}
 end)
 
