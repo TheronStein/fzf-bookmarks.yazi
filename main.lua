@@ -1293,6 +1293,156 @@ local generate_key = function()
   return nil
 end
 
+-- Rename tag only (keep key)
+local action_rename_tag = function(path, is_temp)
+  if path == nil or #path == 0 then return end
+
+  local mb_path = get_state_attr("path")
+  local all_bookmarks = get_all_bookmarks()
+  local temp_bookmarks = get_temp_bookmarks()
+  local path_obj
+  if is_temp and temp_bookmarks and temp_bookmarks[path] then
+    path_obj = temp_bookmarks[path]
+  else
+    path_obj = all_bookmarks[path] or (temp_bookmarks and temp_bookmarks[path])
+  end
+
+  if not path_obj then
+    ya.notify { title = "Bookmarks", content = "Bookmark not found", timeout = 2, level = "warn" }
+    return
+  end
+
+  local tag = path_obj.tag
+  local key = path_obj.key -- Keep existing key
+
+  while true do
+    local title = is_temp and "Rename Tag [TEMPORARY]" or "Rename Tag"
+    local value, event = ya.input({ title = title, value = tag, pos = { "top-center", y = 3, w = 40 } })
+    if event ~= 1 then return end
+    tag = value or ''
+    if #tag == 0 then
+      ya.notify { title = "Bookmarks", content = "Empty tag", timeout = 1, level = "info" }
+    else
+      local tag_obj = nil
+      for _, item in pairs(all_bookmarks) do
+        if item.tag == tag and item.path ~= path then
+          tag_obj = item; break
+        end
+      end
+      if not tag_obj and temp_bookmarks then
+        for _, item in pairs(temp_bookmarks) do
+          if item.tag == tag and item.path ~= path then
+            tag_obj = item; break
+          end
+        end
+      end
+      if tag_obj == nil then break end
+      ya.notify { title = "Bookmarks", content = "Duplicated tag", timeout = 1, level = "info" }
+    end
+  end
+
+  if is_temp then
+    set_temp_bookmarks(path, { tag = tag, path = path, key = key })
+    ya.notify { title = "Bookmarks", content = '[TEMP] "' .. tag .. '" renamed', timeout = 1, level = "info" }
+  else
+    set_bookmarks(path, { tag = tag, path = path, key = key })
+    local user_bookmarks = get_state_attr("bookmarks")
+    save_to_file(mb_path, user_bookmarks)
+    auto_update_global_keymap()
+    ya.notify { title = "Bookmarks", content = '"' .. tag .. '" renamed', timeout = 1, level = "info" }
+  end
+end
+
+-- Reassign key only (keep tag)
+local action_reassign_key = function(path, is_temp)
+  if path == nil or #path == 0 then return end
+
+  local mb_path = get_state_attr("path")
+  local all_bookmarks = get_all_bookmarks()
+  local temp_bookmarks = get_temp_bookmarks()
+  local path_obj
+  if is_temp and temp_bookmarks and temp_bookmarks[path] then
+    path_obj = temp_bookmarks[path]
+  else
+    path_obj = all_bookmarks[path] or (temp_bookmarks and temp_bookmarks[path])
+  end
+
+  if not path_obj then
+    ya.notify { title = "Bookmarks", content = "Bookmark not found", timeout = 2, level = "warn" }
+    return
+  end
+
+  local tag = path_obj.tag -- Keep existing tag
+  local key = path_obj.key or generate_key()
+  local key_display = format_keys_for_display(key)
+
+  while true do
+    local value, event = ya.input({
+      title = "Reassign Keys ⟨space, comma or empty separator⟩",
+      value = key_display,
+      pos = { "top-center", y = 3, w = 50 }
+    })
+    if event ~= 1 then return end
+
+    local input_str = value or ""
+    if input_str == "" then
+      key = ""
+      break
+    end
+
+    local parsed_keys = parse_keys_input(input_str)
+    if #parsed_keys == 0 then
+      key = ""
+      break
+    elseif #parsed_keys == 1 then
+      key = parsed_keys[1]
+    else
+      key = parsed_keys
+    end
+
+    local new_seq = _seq_from_key(key)
+    local conflict, conflict_seq
+
+    local function check(items)
+      for _, item in pairs(items or {}) do
+        if item and item.key and item.path ~= path then
+          local exist = _seq_from_key(item.key)
+          if #exist > 0 then
+            if _seq_equal(new_seq, exist) then
+              conflict, conflict_seq = "duplicate", exist; return true
+            end
+            if _seq_is_prefix(new_seq, exist) or _seq_is_prefix(exist, new_seq) then
+              conflict, conflict_seq = "prefix", exist; return true
+            end
+          end
+        end
+      end
+      return false
+    end
+
+    if check(all_bookmarks) or check(temp_bookmarks) then
+      local msg = (conflict == "duplicate")
+        and ("Duplicated key sequence: " .. _seq_to_string(new_seq))
+        or ("Ambiguous with existing sequence: " .. _seq_to_string(conflict_seq))
+      ya.notify { title = "Bookmarks", content = msg, timeout = 2, level = "info" }
+      key_display = input_str
+    else
+      break
+    end
+  end
+
+  if is_temp then
+    set_temp_bookmarks(path, { tag = tag, path = path, key = key })
+    ya.notify { title = "Bookmarks", content = '[TEMP] Key reassigned for "' .. tag .. '"', timeout = 1, level = "info" }
+  else
+    set_bookmarks(path, { tag = tag, path = path, key = key })
+    local user_bookmarks = get_state_attr("bookmarks")
+    save_to_file(mb_path, user_bookmarks)
+    auto_update_global_keymap()
+    ya.notify { title = "Bookmarks", content = 'Key reassigned for "' .. tag .. '"', timeout = 1, level = "info" }
+  end
+end
+
 action_save = function(path, is_temp)
   if path == nil or #path == 0 then return end
 
@@ -1398,13 +1548,14 @@ action_save = function(path, is_temp)
     set_bookmarks(path, { tag = tag, path = path, key = key })
     local user_bookmarks = get_state_attr("bookmarks")
     save_to_file(mb_path, user_bookmarks)
+    auto_update_global_keymap()
     ya.notify { title = "Bookmarks", content = '"' .. tag .. '" saved', timeout = 1, level = "info" }
   end
 end
 
 -- Read keymap.toml to check for existing keybindings
 local function read_keymap_file()
-  local keymap_path = (os.getenv("HOME") or "") .. "/.core/.sys/configs/yazi/keymap.toml"
+  local keymap_path = (os.getenv("HOME") or "") .. "$CORE_CFG/yazi/keymap.toml"
   local file = io.open(keymap_path, "r")
   if not file then
     keymap_path = (os.getenv("HOME") or "") .. "/.config/yazi/keymap.toml"
@@ -1674,6 +1825,7 @@ action_delete = function(path)
     set_bookmarks(path, nil)
     local updated_user_bookmarks = get_state_attr("bookmarks")
     save_to_file(mb_path, updated_user_bookmarks)
+    auto_update_global_keymap()
     ya.notify { title = "Bookmarks", content = '"' .. tag .. '" deleted', timeout = 1, level = "info" }
   end
 end
@@ -1713,6 +1865,7 @@ action_delete_multi = function(paths)
   if deleted_count > 0 then
     local updated_user_bookmarks = get_state_attr("bookmarks")
     save_to_file(mb_path, updated_user_bookmarks)
+    auto_update_global_keymap()
   end
 
   local total_deleted = deleted_count + deleted_temp_count
@@ -1960,6 +2113,44 @@ local action_switch_group = function()
   end
 end
 
+-- Quick group switching with numbered table
+local action_switch_group_quick = function()
+  local groups = list_groups()
+
+  if #groups == 0 then
+    ya.notify { title = "Bookmarks", content = "No bookmark groups found", timeout = 2, level = "warn" }
+    return
+  end
+
+  local active_group = get_state_attr("active_group")
+
+  -- Build candidates for ya.which with numbers
+  local cands = {}
+  for i, group in ipairs(groups) do
+    if i <= 9 then  -- Limit to 9 groups for number keys
+      local marker = (group == active_group) and "* " or "  "
+      table.insert(cands, {
+        desc = marker .. group,
+        on = tostring(i),
+        group = group
+      })
+    else
+      -- Groups beyond 9 don't get number shortcuts
+      local marker = (group == active_group) and "* " or "  "
+      table.insert(cands, {
+        desc = marker .. group,
+        on = "",
+        group = group
+      })
+    end
+  end
+
+  local idx = ya.which { cands = cands }
+  if idx == nil then return end
+
+  switch_group(cands[idx].group)
+end
+
 local action_create_group = function()
   local value, event = ya.input({
     title = "Create new bookmark group:",
@@ -1977,6 +2168,96 @@ local action_create_group = function()
         switch_group(value)
       end
     end
+  end
+end
+
+-- Generate global keymap file from bookmarks
+local generate_global_keymap = function()
+  local all_bookmarks = get_all_bookmarks()
+  local bookmarks_dir = get_state_attr("bookmarks_dir")
+  local global_keymap_path = bookmarks_dir .. path_sep .. ".." .. path_sep .. "bookmarks-global.toml"
+
+  -- Ensure parent directory exists
+  ensure_directory(global_keymap_path)
+
+  local file = io.open(global_keymap_path, "w")
+  if not file then
+    ya.notify {
+      title = "Bookmarks",
+      content = "Failed to create global keymap file",
+      timeout = 2,
+      level = "error"
+    }
+    return false
+  end
+
+  file:write("# Auto-generated global bookmark keybindings\n")
+  file:write("# DO NOT EDIT MANUALLY - managed by fzf-bookmarks plugin\n")
+  file:write("# Include this file in your keymap.toml with: #:include bookmarks-global.toml\n\n")
+  file:write("[mgr]\n")
+  file:write("keymap = [\n")
+
+  -- Sort bookmarks by key for consistent output
+  local bookmark_array = {}
+  for _, item in pairs(all_bookmarks) do
+    if item.key and item.key ~= "" then
+      table.insert(bookmark_array, item)
+    end
+  end
+  sort_bookmarks(bookmark_array, "key", "tag", false)
+
+  -- Generate keybindings
+  for _, bookmark in ipairs(bookmark_array) do
+    local key_seq
+    if type(bookmark.key) == "table" then
+      -- Multi-key sequence like ["g", "w"]
+      key_seq = "["
+      for i, k in ipairs(bookmark.key) do
+        key_seq = key_seq .. '"' .. k .. '"'
+        if i < #bookmark.key then
+          key_seq = key_seq .. ", "
+        end
+      end
+      key_seq = key_seq .. "]"
+    elseif type(bookmark.key) == "string" and #bookmark.key > 0 then
+      -- Single key
+      key_seq = '["' .. bookmark.key .. '"]'
+    else
+      -- Skip bookmarks without valid keys
+      goto continue
+    end
+
+    -- Escape quotes in path and tag for TOML
+    local escaped_path = bookmark.path:gsub('"', '\\"')
+    local escaped_tag = bookmark.tag:gsub('"', '\\"')
+
+    file:write(string.format(
+      '  { on = %s, run = "cd \\"%s\\"", desc = "Go to: %s" },\n',
+      key_seq,
+      escaped_path,
+      escaped_tag
+    ))
+
+    ::continue::
+  end
+
+  file:write("]\n")
+  file:close()
+
+  ya.notify {
+    title = "Bookmarks",
+    content = "Global keymap generated: " .. global_keymap_path,
+    timeout = 2,
+    level = "info"
+  }
+  return true
+end
+
+-- Auto-generate global keymap whenever bookmarks are saved
+local function auto_update_global_keymap()
+  local auto_gen = get_state_attr("auto_generate_global_keymap")
+  if auto_gen then
+    generate_global_keymap()
   end
 end
 
@@ -2169,6 +2450,7 @@ return {
     state.directory_history = {}
     state.last_paths = {}
     state.initialized_tabs = {}
+    state.auto_generate_global_keymap = options.auto_generate_global_keymap == nil and true or options.auto_generate_global_keymap
 
     ps.sub("cd", function(body)
       local tab = body.tab or cx.tabs.idx
@@ -2235,13 +2517,25 @@ return {
       local path = which_find()
       if path then
         local temp_b = get_temp_bookmarks()
-        action_save(path, temp_b[path] ~= nil)
+        action_rename_tag(path, temp_b[path] ~= nil)
       end
     elseif action == "rename_by_fzf" then
       local path = fzf_find_for_rename()
       if path then
         local temp_b = get_temp_bookmarks()
-        action_save(path, temp_b[path] ~= nil)
+        action_rename_tag(path, temp_b[path] ~= nil)
+      end
+    elseif action == "reassign_key_by_key" then
+      local path = which_find()
+      if path then
+        local temp_b = get_temp_bookmarks()
+        action_reassign_key(path, temp_b[path] ~= nil)
+      end
+    elseif action == "reassign_key_by_fzf" then
+      local path = fzf_find_for_rename()
+      if path then
+        local temp_b = get_temp_bookmarks()
+        action_reassign_key(path, temp_b[path] ~= nil)
       end
     elseif action == "add_by_search" then
       add_bookmark_by_search(false)
@@ -2258,10 +2552,14 @@ return {
     -- Group management actions
     elseif action == "switch_group" then
       action_switch_group()
+    elseif action == "switch_group_quick" then
+      action_switch_group_quick()
     elseif action == "create_group" then
       action_create_group()
     elseif action == "delete_group" then
       action_delete_group()
+    elseif action == "generate_global_keymap" then
+      generate_global_keymap()
     end
   end,
 }
